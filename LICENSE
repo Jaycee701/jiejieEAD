@@ -1,0 +1,49 @@
+MIT License
+
+Copyright (c) 2026 jiejieEAD Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+附加使用条款（Additional Terms of Use）
+================================================================================
+
+1. 本软件仅限用于拥有书面授权的安全测试、安全研究与密码应用合规审计。
+   使用者必须确保对测试目标持有合法的书面授权。
+
+2. 严禁将本软件用于任何未经授权的渗透测试、破解、监听、数据窃取等行为。
+   未经授权对系统进行渗透、破解属于违法行为。
+
+3. 使用者需自行承担因使用本软件产生的一切法律责任。作者与贡献者不对任何
+   滥用行为及其后果承担责任。
+
+4. 中间人代理功能会解密业务明文数据，仅在授权范围内使用；测试结束后应立即
+   销毁相关明文数据与日志。
+
+5. 使用者应妥善保管被测系统的密钥、证书与抓包数据，不得外传或用于
+   非授权目的。
+
+6. 在中华人民共和国境内开展安全测试，应遵守《中华人民共和国网络安全法》
+   《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》及
+   《商用密码管理条例》等相关法律法规；商用密码相关测试需具备相应资质或授权。
+
+7. 本软件不实现、也无法实现 TLCP 国密 SSL 完整流量解密（需服务端私钥或
+   会话主密钥）；本软件不内置任何爆破、免杀、持久化、横向移动能力。
+
+使用本软件即表示您已阅读、理解并同意上述全部条款。

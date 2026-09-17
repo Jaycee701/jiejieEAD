@@ -1,0 +1,73 @@
+# ============================================================================
+#  jiejieEAD 发行版仓库 | Git 忽略规则
+#  注：本仓库是「免安装发行版」目录，resources/ 里的运行时与脚本是发布载荷，
+#      必须入库，因此不做忽略。
+# ============================================================================
+
+# ---------------------------- Python 字节码 ---------------------------------
+# 打包产物，不入库（slim_pyembed.py 会在发布前清理，运行时会自动重新生成）
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---------------------------- 敏感凭证：严禁入库 ----------------------------
+# 本工具实战中常接触真实密钥、证书与抓包文件，误传 GitHub 等同于公开这批凭证。
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.csr
+*.pcap
+*.pcapng
+*.cap
+*_secret.*
+*.secrets
+.env
+.env.*
+!/.env.example
+config.local.*
+keys/
+certs/
+captures/
+output/
+*.pem
+# 例外：内置 Python 自带的 CA 根证书包，是发布载荷的一部分，必须随包
+!resources/python-embed/Lib/site-packages/certifi/cacert.pem
+!resources/python-embed/Lib/site-packages/pip/_vendor/certifi/cacert.pem
+
+# ---------------------------- 运行时记录 / 学习库 ---------------------------
+# 「从实战中学到的算法/密钥/IV」记录，不适合公开分发（缺失时程序自动建空库）
+resources/python/crypto_knowledge.json
+logs/
+*.log
+
+# ---------------------------- 组装过程产物 ----------------------------------
+build-artifacts/
+_staging_quarantine/
+dist-stale-*/
+
+# ---------------------------- 编辑器 / IDE ----------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.history/
+
+# ---------------------------- 操作系统 --------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------- 其它 ------------------------------------------
+*.tmp
+*.bak
+~$*

@@ -1,0 +1,453 @@
+================================================================
+ jiejieEAD  免安装版 · 使用说明
+ 国密 & 对称密码渗透工具集（Tauri 桌面 GUI）
+================================================================
+
+【怎么打开】
+  双击本目录下的  jiejieEAD.exe  即可。
+  首次启动会检查内置 Python 环境，约 1~3 秒。
+
+【重要：不要单独拷贝 exe】
+  本目录下的 resources 文件夹是程序的"内脏"（内置 Python 3.11.9 +
+  密码库 pycryptodome/gmssl/scapy/pyasn1 + mitmproxy 11.0.2 +
+  MCP SDK（mcp，供第 7 个页签接入 AI 客户端）+ 业务脚本）。
+  若要移动到别的位置/U盘，必须把 jiejieEAD.exe 和 resources
+  整个文件夹一起拷走，保持同级关系，否则程序会提示找不到 Python。
+
+【功能模块（对应 GUI 十一个页签）】
+  1. [Tab1] 对称加解密    17 种算法 × 6 种工作模式 × 5 种填充，文本与文件加解密：
+                   算法：SM4 / AES-128 / AES-192 / AES-256 / DES / 3DES / RC4 / RC5（3 变体）/ RC6（2 变体）/ Blowfish / CAST5 / RC2 / ChaCha20 / Salsa20
+                   注：RC5 / RC6 为自实现（pycryptodome 与 cryptography 都没有），
+                   已用 RFC 2040 / BouncyCastle 公开向量验证，但纯 Python 实现
+                   比原生库慢约两个数量级，大文件会明显变慢；
+                   RC2 另有 effective key bits 参数（--rc2-effective-bits，默认 128），
+                   ChaCha20/Salsa20 必须提供 nonce（前者 8/12/24 字节，后者只能 8 字节）。
+                   模式：CBC / ECB / CFB / OFB / CTR / GCM（认证加密）
+                   填充：PKCS#7 / Zero / None / ISO7816 / ANSIX923
+                   HEX 密钥与 IV 自动校验长度，Base64 / Hex / Raw 输出。
+                   注：GCM 与 PKCS7/ISO7816/ANSIX923 组合能自动发现密钥错误；
+                   无完整性校验的组合（如 ECB+Zero）界面会主动提醒人工核对明文。
+  2. [Tab2] MITM 自动加解密  基于 mitmproxy 的中间人插件，仅拦截白名单域名，
+                   请求解密透传 -> 改包 -> 响应加密回注。
+                   支持上面全部算法/模式/填充，与加解密工作台共用同一引擎。
+                   启动后在日志面板可复制带 token 的改包地址。
+  3. [Tab3] 国密分析      SM3 摘要、SM2 公钥风险审计（9 维检测）、
+                   TLCP 国密流量解析（需 pcap 文件）
+  4. [Tab4] 文件扫描分析  丢一个文件进去自动分析：识别文件类型（JS/APK/
+                   pcap/PEM/二进制…）、检出加密算法（SM4/AES/RSA/MD5…）、
+                   识别工作模式与填充（ECB/CBC/GCM、Zero/PKCS7…）、
+                   自动提取密钥与 IV，并一键填入工作台或 MITM 页签。
+                   【识别到什么就能复现什么】——扫描出的模式/填充会直接带进
+                   工作台与 MITM，不会出现"检测到 ECB 但只能跑 CBC"的情况。
+                   支持钻包解析 ZIP/APK 内层，离线运行。
+                   【v3.1】新增「伪装常量与密钥派生链」：
+                   · 自动解码伪装的 base64 常量（如 data:image/png;base64,xxx
+                     解出来根本不是图片）、裸 base64、长 HEX 串，并按常见拼法
+                     切成候选 密钥/IV/种子（67 字符 → 32+16+16+3）；
+                   · 识别「对称加密 → 摘要 → 取字节区间」的派生链，直接给出可执行
+                     的 cli_crypto.py --derive 命令；常量与链路同现时自动绑定；
+                   · .class/.dex/.jar/.apk/无后缀二进制会先抽可打印串再分析
+                     （Java class 常量池里的字符串就是这样拿到的）。
+  5. [Tab5] 文件夹整体分析 【新】把整个项目目录丢进去，递归分析其中所有文件，并找出
+                   文件之间"串联起来"的密码逻辑（密钥定义在 A、加解密在 B、
+                   发请求在 C——单看一个文件永远看不到全貌）。
+                   产出：
+                   · 跨文件关系图（import 依赖 / 共享密钥 / 符号引用 / 同用密码库，
+                     左→右 = 依赖方向，悬停高亮）；共享密钥是最危险的信号；
+                   · 数据流链路（取密钥→初始化密码器→加解密→编码→签名→传输），
+                     链路缺段即说明保护不完整（例如没有"传输"=可能明文外发）；
+                   · 整体总结（在线 LLM，失败自动降级离线规则）；
+                   · 解密逻辑【新】把加密逻辑"反过来"写成可执行步骤，并跨文件把
+                     「算法」（常在 aes.js）与「密钥/IV」（常在 config.js）拼成完整
+                     配方；按密钥真实长度重算位宽（16 字节→AES-128，不是默认 256）；
+                   · 粘贴密文直接解密【新】密文整段粘进去就出明文：自动试遍
+                     「配方 × 输入形态（Base64/Hex/二次Base64）」，再按明文特征
+                     （UTF-8 合法性、可打印比例、JSON 结构、业务字段名）打分选最优；
+                     失败时给出每次尝试的原因与排查建议，不会把乱码当成功；
+                   · 文件清单表格（相关度/算法/密钥数/角色，一键跳单文件深析）。
+                   自动排除 node_modules / .git / dist / build / venv / Pods 等噪声目录；
+                   内置文件数与单文件体积上限，防止大目录卡死。
+                   【v3.1】新增派生配方与跨文件绑定：把 A 文件里的伪装常量与 B 文件里的
+                   派生链线索拼成完整配方（「种子 → AES-CBC(常量A,常量B) → SHA256 → [16:32]」），
+                   卡片上可直接「去 Tab 8 派生密钥」，补上种子即可复算出真正的正文密钥。
+                   另外归档类文件（.jar/.apk/.zip）不再受 4MB 单文件上限限制（放宽到 64MB）。
+                   命令行：folder_crypto_analyzer.py --dir <目录> [--deep] [--no-llm]
+                           只看配方：--show-plans；直接解密：--decrypt-text "<密文>"
+  6. [Tab6] AI 智能分析  【新】粘贴一段代码/抓包/配置片段，自动判定算法/模式/填充/
+                   密钥/IV/编码，并一键回填工作台或 MITM。
+                   在线 LLM（OpenAI 兼容接口）为主，离线启发式规则兜底；
+                   在线调用失败会自动降级为离线分析（结果标 source=offline-fallback），
+                   绝不静默失败。配置保存在 resources\python\ai_config.json。
+                   ★ 文件扫描分析页签（模块 4）里也有「④ AI 深度分析」入口，
+                     可直接对扫描的文件跑同一套 AI 分析。
+  7. [Tab7] MCP 接入 【新】把本工具的密码能力（加解密 / 文件扫描 / 能力矩阵）
+                   暴露为 MCP 工具，供 WorkBuddy / Claude Desktop 等 AI 客户端直接调用。
+                   GUI 里全程点按钮，不用手抄路径、不用手改 JSON：
+                   - 打开页签自动体检：mcp SDK 是否就绪、h11/httpcore 版本、
+                     pip check 是否全绿、服务器脚本是否齐全、客户端是否已登记；
+                   - 「一键安装 / 修复依赖」：装 mcp，并自动把 h11/httpcore 压回
+                     与 mitmproxy 共存的兼容版本（不压回去 MITM 页签会起不来）；
+                   - 「stdio 握手自检」：真实拉起服务器跑 initialize -> tools/list
+                     -> 真加密 -> 错误密钥必须被拒，全过才算"接入可用"；
+                   - 「写入 WorkBuddy / 写入 Claude Desktop」：按本机真实路径
+                     合并写入客户端配置，保留其它服务器并自动生成 .bak 备份；
+                   - 「生成 / 复制接入配置」：手动粘贴方案，已带 UTF-8 声明
+                     （否则工具返回的中文报错在部分 Windows 客户端下会乱码）。
+                   mcp 依赖已随包内置（resources\python-embed），开箱即用。
+                   * 写入后需重启客户端，或在连接器管理页右上角"自定义连接器"里
+                     对新服务器点"信任"，才会真正生效。
+                   命令行：mcp_setup.py --status / --install / --config /
+                           --write workbuddy|claude / --smoke / --selftest
+                   服务器本体：crypto_mcp_server.py（stdio，被客户端拉起，
+                   暴露 crypto_encrypt / crypto_decrypt / scan_crypto_file /
+                   list_capabilities 四个工具，与 GUI 同源、结果一致）
+
+  8. [Tab8] 摘要 / HMAC / 密钥派生 【新】
+                   这三件事在真实目标里几乎总是绑在一起的：密钥是"算出来的"、
+                   报文还要签名。以前只能识别出"外层用了 SM4"，解不开也签不了。
+                   · 密钥格式：hex / utf8 / base64 / auto
+                     —— 代码里 `KEY = "4A7F2C1E9B3D5A08"` 是 16 个 ASCII 字符
+                     = 16 字节（UTF-8 字面量），按 HEX 解只有 8 字节直接报错，
+                     这是"密钥长度不合法"最常见的根因，界面会主动提示歧义；
+                     --keyinfo 可一次看到三种格式各自的字节数。
+                   · 摘要：MD5 / SHA-1 / SHA-256 / SHA-512 / SM3，输出 HEX 或 Base64。
+                   · HMAC：HMAC-MD5 / SHA1 / SHA256 / SHA512 / HMAC-SM3，
+                     HMAC-SM3 与 BouncyCastle 逐字节一致（银行/政务报文签名主力）。
+                   · 密钥派生：种子 → 对称加密 → 摘要 → 取字节区间。
+                     内置 8 个预设，含白盒前端最常见的
+                     「AES-128-CBC(种子) → SHA256 → 取[16:32]」；
+                     过程逐步留痕（每步的算法/输入输出长度/结果前缀），
+                     一键把派生结果填进工作台或 MITM。
+                   · 加解密工作台与 MITM 页签都已支持密钥/IV 格式选择。
+                   命令行：cli_crypto.py --keyinfo / --digest / --hmac / --derive
+                           （--key-format / --iv-format 控制密钥格式）
+
+  9. [Tab9] 非对称 / 压缩 / 编码链 / 混合信封 【新】
+                   真实业务的"组合拳"：公钥包密钥、压缩进编码链、安全键盘信封。
+                   · SM2：加解密（C1C3C2 / C1C2C3 两种格式）、签名验签
+                     （默认国标 SM3+Z 预处理，支持 DER 签名与"输入已是摘要"模式）；
+                     公钥兼容 128 位 HEX（可带 04/0x 前缀）/ Base64 / PEM，
+                     私钥兼容 64 位 HEX / Base64 / PEM。
+                   · RSA：加解密（PKCS#1 v1.5 / OAEP）与签名验签（v1.5 / PSS），
+                     支持 MD5~SHA512；**长文本自动分段**（对应 JS 里的 encryptLong2）。
+                     密钥兼容 PEM / DER-Base64 / JSON(n,e[,d]) / HEX。
+                   · 压缩：zlib / gzip / deflate / deflate-raw（pako 默认裸流），
+                     解压时算法标错会自动依次试其它三种。
+                   · 多级编码链：压缩 + Base64/Base64URL/HEX/URL 任意组合、顺序可控，
+                     解码自动反序执行，失败时明确告诉你是哪一步。
+                   · 混合加密信封：随机对称密钥加密数据 + 公钥（SM2/RSA）加密该密钥，
+                     一键生成「包裹密钥 / 密文 / IV」；拿到接收方私钥即可还原。
+                   · 生成测试密钥对（SM2 / RSA-2048）便于自测。
+                   命令行：cli_crypto.py --sm2 / --rsa / --zip / --chain / --envelope / --keygen
+
+ 10. [Tab10] 一键解密 【新】把密文直接贴进去，工具自动走完「分析 → 试解 → 出明文」：
+                   ① 形态识别：整段 HTTP / 裸 Base64 / 裸 Base64URL / 裸 HEX /
+                      URL 编码(%XX) / 种子前置 /
+                      JSON 混合信封(encKey+data+iv 或 ed+sked+iv)；混在源码里的密文
+                      会自动被挑出来；形状本身有歧义时(如 32hex+Base64 的多种切法)
+                      不硬猜，多种解释都试、由打分与 mac 校验裁决
+                   ② 常量获取：从「你贴的文本」「指定的目标目录/JS 文件」
+                      「本地知识库」三处挖（复用伪装常量解码与派生链识别）
+                   ③ 配方编排：两条路线 —— 对称类「种子派生 → 对称解密 → 压缩还原 → mac 校验」；
+                      信封类「私钥解封包裹密钥 → 对称解密 → 压缩还原」（RSA-OAEP/PKCS1v1.5、
+                      SM2 C1C3C2/C1C2C3 都会试；解封结果必须是 16/24/32 字节才认）；
+                      解不开的编码链先剪掉，避免候选被上限截断
+                   ④ 明文打分：UTF-8 合法性 / **按字符**的可打印比例（中文不再被误判成乱码）/
+                      JSON 结构 / 业务字段名命中，**能验 mac 就一定验 mac**
+                      （mac 算法按字节长度自适应：32B→HMAC-SM3/HMAC-SHA256、20B→SHA1、16B→MD5）
+                   ⑤ 输出：明文 + 逐步解密逻辑 + 判定依据 + 全部尝试记录（失败也给原因）
+                   绝不把乱码当成功；没有材料时会明确告诉你「需要目标 JS/jar 目录」，
+                   而不是瞎猜。常量不预置，只从你提供的材料里来。
+                   命令行：cli_crypto.py --auto-solve --text/-file <密文> [--target-dir <目录>]
+                   独立用法：cipher_auto_solver.py --text/-file ... [--target-dir ...] [--json]
+
+ 11. [样本集] 密文样本集（14 个，全部可一键解出）【新】配套两支脚本：
+                   resources\tools\make_cipher_samples.py    生成样本集
+                   resources\tools\verify_cipher_samples.py  用一键解密逐个跑并出报告
+                   覆盖 7 种分组算法(SM4/AES128/192/256/DES/3DES/RC4)、5 种模式
+                   （分组/流算法共 17 种可选，见 Tab1）
+                   (ECB/CBC/CTR/GCM/STREAM)、3 种填充(PKCS7/Zero/None)、6 种编码与压缩
+                   (Base64/Base64URL/HEX/双层Base64/URL/多级链 + gzip/zlib)、9 种报文形态、
+                   以及 RSA-OAEP 与 SM2 两种非对称信封。
+                   每个样本目录：cipher.txt 密文 · app.js 目标源码片段 · README.md
+                   (密文特征+分析思路) · expect.json 标准答案；信封样本另有 server.js。
+                   每个样本都能被工具独立解出，并生成含「解密过程 + 明文 + 依据」的报告。
+
+ 12. [Tab11] 加密逻辑总览 【新】把工具里**全部加解密逻辑**集中到一个页面：
+                   96 条原子逻辑 + 22 条端到端组合配方 + 20 条密文特征规则，
+                   按算法/模式/填充/密钥格式/派生/材料来源/摘要/HMAC/编码/压缩/
+                   编码链/非对称/信封/报文框架/组合配方/特征规则/未支持 17 类归档，
+                   每条都写清「用途 / 适用场景 / 参数 / 与其他逻辑的关系 / 支持状态 /
+                   对应样本 / CLI 复现命令」。
+                   ① 按密文特征反查：贴密文 → 量出特征 → 告诉你优先试哪几条
+                   ② 全部逻辑清单：左侧分类树 + 右侧卡片，支持关键词搜索
+                   ③ 按逻辑试算：选中任一条 → 填密文/密钥/方向 → 直接出结果
+                   未支持的（白盒 SM4、密钥协商、国密 TLS、so 内派生…）单独归档，
+                   并写清缺什么、该怎么补。
+                   配套文档：根目录《加解密逻辑总览.md》（四层模型 + 14 样本归纳 +
+                   常见组合与工具对照 + 特征反查表 + 附录 A 全量清单）。
+                   数据源 crypto_logic_registry.py 与引擎同源，`--export-md` 可重新导出。
+                   命令行：crypto_logic_registry.py --list / --match / --apply / --export-md
+
+  横切能力：本地知识库 【新】分析出正确逻辑后自动学习并记录，下次遇到"同样的逻辑"
+                   直接命中（来源徽标显示"知识库命中"），秒出算法/模式/填充/密钥/IV。
+                   - 点「学习此规则」或「一键填入工作台/MITM」即视为确认并入库；
+                   - 在线 LLM 高置信（>=0.8）结果自动入库；离线启发式需人工确认；
+                   - 支持 查看/统计/清空，纯本地 JSON，不上传任何数据。
+                   - 位置：resources\python\crypto_knowledge.json
+                     （目录不可写时回退 %LOCALAPPDATA%\jiejieEAD\）
+                   - 命令行：--learn / --kb-list / --kb-stats / --kb-clear / --kb-path
+
+【正确性验证（安装目录内即可复跑）】
+  1. 密码引擎自检     resources\python-embed\python.exe cli_crypto.py --selftest
+                      【v3.2 新增第 8 组】SM2（固定 k 独立重算 C1/C2/C3 的已知答案测试、
+                        C1 曲线方程校验、签名/验签/DER/prehashed/公钥格式）、
+                        RSA（v1.5/OAEP/PSS、长文本分段、EMSA 手工构造独立验证）、
+                        压缩（4 种算法往返 + 魔数 + 自动回退）、
+                        编码链（8 种组合往返 + 顺序错误必须失败）、
+                        混合信封（SM2+SM4 / RSA+SM4 端到端）
+                      含国标向量、与 pycryptodome 原生实现对照、
+                      820 组算法×模式×填充往返、错误密钥检出，
+                      以及【v3 新增】摘要标准向量（MD5/SHA1/SHA256/SM3）、
+                      HMAC-SHA256 向量、HMAC-SM3 与 BouncyCastle 对照、
+                      密钥格式解析、派生链回归（含银行 H5 报文形态的脱敏向量端到端）
+  2. 扫描器自检       ...\python.exe file_crypto_scanner.py --selftest
+                      含与引擎能力矩阵的一致性比对（防"说支持却跑不了"），
+                      以及「识别到什么就能复现什么」的回归断言
+  3. MITM 插件自检    ...\python.exe mitm_crypto.py --selftest
+  4. AI 分析自检      ...\python.exe ai_crypto_analyzer.py --selftest
+                      （含离线规则、在线降级、知识库学习/命中回路、网络层容错）
+  5. 文件夹分析自检   ...\python.exe folder_crypto_analyzer.py --selftest
+                      （共 84 项：遍历剔除噪声、三种跨文件边的检出与方向、
+                        重复定义不产生假边、数据流覆盖取钥→传输、
+                        解密配方跨文件合并与位宽纠正、配方落盘回读、
+                        粘贴密文解密（单层/双层Base64、错密钥必须判失败））
+  6. 知识库自检       ...\python.exe crypto_knowledge.py --selftest
+  7. MCP 服务器自检   ...\python.exe crypto_mcp_server.py --selftest
+                      （底层能力，无需 mcp SDK）
+  8. MCP 接入向导自检 ...\python.exe mcp_setup.py --selftest
+                      （体检 / 配置生成 / 写入合并保备份 / 真实 stdio 握手冒烟）
+ 10. 一键解密自检     ...\python.exe cipher_auto_solver.py --selftest
+                      （形态识别 / 材料挖掘 / 端到端 / mac 校验 / 非对称信封 / 编码链 /
+                        负向断言共 44 项）
+ 11. 密文样本集自检    ...\python.exe resources\tools\verify_cipher_samples.py --dir <样本目录>
+                      （14 个样本逐个跑一键解密，与标准答案逐字比对，并生成分析报告）
+ 12. 逻辑总览自检      ...\python.exe crypto_logic_registry.py --selftest
+                      （44 项：分类完整 / ID 唯一 / 反查命中 / 各类逻辑可执行 / 导出覆盖）
+  9. 密钥材料分析自检 ...\python.exe key_material_analyzer.py --selftest
+                      （伪装 data URI / 真 PNG 不误报 / 裸 base64 / 双层 base64 /
+                        长 HEX / JS 与 Java 派生链 / 字节码共现 / 常量自动绑定，
+                        共 30 项，向量脱敏自银行 H5 报文形态）
+  以上需先在 resources\python 目录下执行。
+  跨实现互操作校验（与 Node.js/OpenSSL 逐字节比对 + 公开标准向量）
+  为开发期脚本，需在源码目录运行，不随本安装包分发。
+
+【MCP 接入（GUI 第 7 个页签，依赖已随包内置）】
+  目录 resources\python\crypto_mcp_server.py 是一个独立 stdio MCP 服务器，
+  把本工具的加解密 / 文件扫描 / 能力矩阵能力暴露为 MCP 工具，供 WorkBuddy /
+  Claude Desktop 等客户端调用。接好后可在客户端直接说"用 jiejieEAD 解密这段
+  SM4 密文"，由本服务器真实执行（与 GUI 同源，结果一致）。
+  暴露的 4 个工具：crypto_encrypt / crypto_decrypt / scan_crypto_file /
+  list_capabilities。
+
+  ★ 推荐：直接打开 GUI 的「MCP 接入」页签，四步全点按钮——
+      1) 打开即自动体检（SDK / 依赖兼容 / 脚本 / 客户端登记情况）
+      2) 「一键安装 / 修复依赖」（mcp 已内置，一般显示"就绪"，仅重装时用）
+      3) 「stdio 握手自检」（真实拉起服务器跑一遍 initialize->tools/list->调用）
+      4) 「写入 WorkBuddy / 写入 Claude Desktop」（自动填本机真实路径，合并写入，
+         保留其它服务器并生成 .bak-jiejieead 备份；也可「复制配置」手动粘贴）
+    写入后需重启客户端，或在连接器管理页右上角"自定义连接器"里对该服务器点
+    "信任"，才会真正生效。
+
+  · 命令行等效方式（在 resources\python 目录下执行）：
+      python.exe mcp_setup.py --status         体检（加 --json 输出机器可读）
+      python.exe mcp_setup.py --install        装 / 修依赖
+      python.exe mcp_setup.py --config         生成可粘贴的 mcpServers 配置
+      python.exe mcp_setup.py --write workbuddy  直接写入客户端配置
+      python.exe mcp_setup.py --smoke          真实 stdio 握手自检
+      python.exe mcp_setup.py --selftest       接入向导自身自检
+
+  · 手动配置（不想用写入按钮时）：
+      command 指向 resources\python-embed\python.exe，
+      args    指向 resources\python\crypto_mcp_server.py，
+      建议加 env：{"PYTHONIOENCODING":"utf-8","PYTHONUTF8":"1"}
+      （工具返回的 JSON 含中文报错信息，不声明 UTF-8 在部分 Windows 客户端下会乱码）
+
+  · 依赖兼容性（重装依赖时会遇到，GUI 按钮已自动处理）：
+      装 mcp 会把 h11 升到 0.16、httpcore 升到 1.0.9，而 mitmproxy 11.0.2 要求
+      h11<=0.14.0，不压回去第 2 个页签的 MITM 会起不来（pip 报 dependency conflicts）。
+      实测 h11==0.14.0 + httpcore==1.0.7 下 pip check 全绿，两侧共存、握手全通。
+      详见使用手册第九节。
+
+【关于密钥：本发布版不含任何预设密钥】
+  为便于安全分发，包内所有「运行期会产生密钥」的文件都已清空：
+  · resources\python\ai_config.json          api_key 为空、enabled=false（仅留模板）
+  · resources\python\crypto_knowledge.json   空库（entries=0，无学习记录）
+  要用在线 AI 分析，请打开 GUI「AI 智能分析」页签，填入**你自己的**
+  Base URL / API Key / 模型后点「保存配置」，再打开「启用在线」；
+  不填则全程走离线启发式规则（零网络、零依赖，结论同文件扫描）。
+  建议把自己的密钥放在包外目录，并用环境变量 JIEJIEEAD_AI_CONFIG 指向该文件，
+  这样升级/覆盖安装不会丢，也不会被误打包进发布包。
+  打包/分发前可先跑一次密钥泄漏自检（源码目录内）：
+      python tools\preflight_secret_scan.py --dir <要检查的目录>
+
+【本次更新（2026-09-16 · 密码引擎 v3）】
+  · 新增 GUI 第 8 个页签「摘要 / HMAC / 密钥派生」，补齐三类此前缺失的能力：
+    摘要（MD5/SHA1/SHA256/SHA512/SM3）、HMAC（含 HMAC-SM3）、
+    密钥派生（种子→加密→摘要→取字节区间，8 个预设，过程留痕，一键回填）。
+  · 密钥材料新增「格式」概念：hex / utf8 / base64 / auto。
+    加解密工作台与 MITM 页签都能选；工作台会提示同一串密钥在不同格式下的
+    字节数差异（"密钥长度不合法"最常见的根因就是这里）。
+  · MITM 插件同步支持 keyFormat / ivFormat，拦截真实业务流量时可直接用
+    UTF-8 字面量密钥，不再需要手工转 HEX。
+  · 引擎能力矩阵升级到 v3（--spec 可见 key_formats / digests / hmacs / kdf_presets）。
+  · 自检扩展：cli_crypto --selftest 由 6 组变 7 组，新增 19 项断言，
+    其中派生链与 HMAC-SM3 直接拿银行 H5 报文形态的脱敏向量做回归。
+
+【本次更新（2026-09-16 · v3.1）】
+  · 新增「伪装 base64 常量自动解码」：data URI 伪装（声明 PNG 实为文本）、
+    裸 base64、长 HEX、双层 base64、被换行/拼接拆开的常量，全部自动解码；
+    解出的文本按常见拼法给出定长切片与候选 密钥/IV/种子。
+  · 新增「AES/SHA 派生链识别」：识别「对称加密 → 摘要 → 取字节区间」，
+    生成可执行的 --derive 命令；同文件 / 跨文件自动绑定常量；
+    .class/.dex/jar/apk 等二进制先抽可打印串再分析。
+  · 接入位置：Tab 4 文件扫描结果新增「伪装常量与密钥派生链」区块；
+    Tab 5 文件夹分析新增「派生配方」卡片（可直接跳 Tab 8 派生密钥）。
+  · 归档类文件（.jar/.apk/.zip/.aar）单文件上限由 4MB 放宽到 64MB
+    （此前 6.2MB 的 jar 会被整包跳过）。
+  · 新增自检 key_material_analyzer.py --selftest（30 项）。
+
+【本次更新（2026-09-16 · v3.2 / 引擎 v4）】
+  · 新增 GUI 第 9 个页签「非对称 / 压缩」：SM2、RSA、压缩解压、多级编码链、
+    混合加密信封五个子工具，含生成测试密钥对。
+  · 引擎新增：SM2 加解密/签名验签、RSA 加解密/签名（含长文本自动分段）、
+    zlib/gzip/deflate 压缩解压、多级编码链、SM2/RSA 混合加密信封。
+  · cli_crypto.py 新增：--sm2 / --rsa / --zip / --chain / --envelope / --keygen，
+    以及 --public-key / --private-key / --pub-file / --priv-file / --sm2-mode /
+    --asn1 / --prehashed / --sig / --rsa-padding / --rsa-scheme / --hash /
+    --zip-algo / --chain / --recipient / --wrapped-key / --cipher-text 等参数。
+  · 能力矩阵升级到 v4（--spec 可见 asym / compression / chain_steps）。
+  · 安全性改进：SM2 加密/签名的随机数强制改用密码学安全的 secrets
+    （gmssl 默认用非密码学的 random 模块，随机数可预测会导致私钥被还原）；
+    私钥 PEM 支持 EC PRIVATE KEY / PKCS#8 两种 DER 结构。
+  · 易用性：解密输入过长时提前拦截并引导走文件通道；RSA v1.5 解密会主动提示
+    "该填充不含完整性校验，密钥不对不一定报错"。
+
+【本次更新（2026-09-16 · v3.3）】
+  · 新增 GUI 第 10 个页签「一键解密」：贴密文 → 自动分析加解密逻辑 → 尝试解密 →
+    输出明文 + 解密逻辑说明 + 判定依据 + 全部尝试记录。
+  · 新增引擎模块 cipher_auto_solver.py：
+    - 形态识别：整段 HTTP /
+      裸 Base64 / 裸 HEX；密文混在源码或日志里也能自动抽出
+    - 常量获取：从粘贴文本、目标目录/单文件（伪装常量、定长切片、派生链）、知识库三处挖
+    - 配方编排：种子派生（含"取中间 16 字节"）→ 对称解密 → 压缩还原 → mac 校验，逐个试解
+    - 明文打分：UTF-8 / 可打印比例 / JSON / 业务字段名；**能验 mac 就验 mac**
+    - 输出：明文 + 逻辑说明（逐步）+ 依据 + 尝试记录（失败也给可读原因）
+  · cli_crypto.py 新增：--auto-solve / --target-dir / --target-file
+
+【本次更新（2026-09-16 · v3.4）】
+  · 一键解密大幅扩展形态识别与解密能力，并新增配套「密文样本集」（14 个，全部可解）：
+    - 新增形态：裸 Base64URL（含 -_ / 去填充）、URL 编码(%XX)、JSON 混合信封
+      (encKey/data/iv 或 ed/sked/iv)；纯 HEX 优先于 Base64 判定
+    - 形状歧义（32hex+Base64）不再硬猜：给出「种子前置」等多种解释，
+      由明文打分 + mac 校验裁决
+    - 新增非对称信封解密：从材料里的 PEM / 十六进制私钥出发，用 RSA-OAEP / PKCS1v1.5
+      或 SM2(C1C3C2/C1C2C3) 解封包裹密钥，再解正文；解封结果必须是 16/24/32 字节
+      （RSA PKCS1v1.5 无完整性校验，用错填充不会报错，只能靠长度筛）
+    - 明文打分改为按**字符**算可打印比例：含中文的明文不再被误判成乱码
+    - mac 校验算法自适应：按 mac 字节长度选候选（32B→SM3/SHA256、20B→SHA1、16B→MD5），
+      响应形态也能验 mac
+    - 编码链扩充：URL→Base64、Base64→HEX；解不开的编码链先剪掉，避免候选被上限截断
+    - 新增 resources\tools\ 两支脚本：生成样本集 / 用一键解密验证样本集并出报告
+  · 自检从 25 项扩到 44 项（含 URL 形态、信封识别、RSA/SM2 解封、mac 算法自适应、编码链剪枝）
+
+【本次更新（2026-09-16 · v3.5）】
+  · 新增「加密逻辑总览」模块（GUI 第 11 个页签 + crypto_logic_registry.py）：
+    - 集中登记工具全部加解密逻辑：96 条原子逻辑 + 22 条组合配方 + 20 条特征规则
+    - 每条写清「用途 / 适用场景 / 参数 / 相互关系 / 支持状态 / 对应样本 / CLI 复现命令」
+    - 支持按分类/关键词查看、按密文特征反查（贴密文 → 建议试解顺序）、按逻辑直接试算
+    - 未支持的能力单独归档并写清缺口（白盒 SM4 / 密钥协商 / 国密 TLS / so 内派生 /
+      自定义算法 / 非标准编码 / TLV / 分块流式）
+    - `--export-md` 可导出 Markdown 清单，保证文档与代码同源
+  · 新增配套文档《加解密逻辑总览.md》：四层模型（对谁加密/密钥来源/编码压缩/完整性）、
+    14 个样本逐条归纳、常见组合与工具支持对照（收编《常见加密逻辑组合总结》全文要点）、
+    密文特征反查表、爆破优先级与识别要点
+  · 修复：KDF 预设 digest-sha256 / digest-md5 / digest-sm3 / hmac-* 原本**没有 slice 步骤**，
+    传入 slice_start/end 会被静默忽略（标着取前 16 字节、实际拿 32 字节）——
+    现在引擎会自动补上 slice 步骤，让标签与真实行为一致
+  · 自检：加密逻辑总览 44 项全过
+
+【本次更新（2026-09-16 · v3.6）】
+  · 修复：加解密工作台一打开就误报「密钥长度不合法」——前端引用了一个**从未定义**的
+    密钥长度表（keyAllowedBytes），导致 16 字节对 16 字节也打红叉；现已补上定义，
+    默认示例密钥/IV 与默认算法完全匹配，打开即全部绿灯。
+  · 一键填入工作台全面升级为「自动匹配」：所有模块（文件扫描 / 文件夹分析 / AI 分析 /
+    一键解密 / 逻辑总览）的「填入工作台」现在都会 ——
+    ① 算法归一化（aes 族按密钥字节数自动定 128/192/256）；
+    ② 工作模式与填充按当前算法自动收敛（流式自动去填充等）；
+    ③ 密钥/IV 的解释方式（HEX/UTF-8/Base64）按「字节数正好匹配」自动挑选；
+    ④ 单条密钥材料填入时，若长度与当前算法不符会自动换成匹配的算法。
+  · 一键解密：去掉「支持这些形态…」「原理：…」两处提示文案；形态识别新增兜底——
+    任何密文（含与源码混杂、形态不典型的）都会被抽出并至少进解密矩阵试一轮，
+    不再只在已知框架里打转；结果区新增「用到的加解密逻辑」，
+    编号与「加密逻辑总览」一一对应，点击即跳转查看用途与适用场景。
+  · 界面：顶部页签改为两行排列（11 个页签一行放不下）；底部状态栏文案固定为
+    「From JieJie，工具使用时有Bug/缺陷/建议等，请联系jiejieddd@qq.com」（加粗）。
+
+【本次更新（2026-09-17 · v3.7）】
+  · 加密逻辑总览（Tab 11）新增「编号清单」视图：把工具当前已存的全部逻辑
+    （96 条原子逻辑 + 22 条组合配方 + 20 条特征规则）按 1..N 连续编号逐条列出，
+    每条带「名称 + 关键参数 + 用途」，支持一键复制全部清单，确保不遗漏任何已存逻辑。
+  · 「一键解密」与「加密逻辑总览」双向联动：
+    ① 一键解密完成后，结果区列出「用到的加解密逻辑」（显示名称而非编号），
+       点击即跳转总览并定位该条；
+    ② 总览每条逻辑显示「一键解密命中 ×N」徽标，可一键筛出最近被命中的逻辑；
+    ③ 总览任一逻辑可「带去一键解密」：回到一键解密后，执行时会自动按该逻辑
+       单独试算一次并与主结论互相印证。
+    两个页签共用同一份后端数据（crypto_logic_registry.py），天然同步一致。
+  · 修复：加解密工作台打开即误报「密钥长度不合法」（前端引用了未定义的
+    密钥长度表，16 字节对 16 字节也打红叉）—— 已补定义并验证，
+    打开即显示「✓ 长度合法：16 字节（按 hex 计算）」。
+
+【本次更新（2026-09-17 · v3.8）】
+  · 「加密逻辑总览」现在可写（落盘 crypto_logic_user.json，与知识库同一套规则）：
+    - 新增逻辑：右上角「新增逻辑」按钮，填分类/名称/用途/适用场景/关键参数/关联逻辑/来源，
+      保存后**立刻出现在全部逻辑清单与编号清单**里，重启工具依然在；
+    - 删除逻辑：每条逻辑（卡片视图与编号清单）都带「删除」按钮——
+      自定义条目**彻底删除**，内置条目**记为隐藏**（可在「恢复隐藏的内置条目」里一键找回），
+      删除/隐藏/恢复都是实时生效并即时落盘；
+    - 详情区会显示「用户添加」标签与统计（原子逻辑 / 组合配方 / 特征规则 / 用户添加 / 已隐藏内置）。
+  · 三个分析页新增「加入逻辑总览」按钮：文件扫描分析、文件夹整体分析（每套配方一个）、
+    AI 智能分析 识别出加密逻辑后，点一下即可把该逻辑（算法/模式/填充/编码/密钥来源，
+    并自动关联对应的 algo./mode./padding./encoding. 逻辑 ID）沉淀进逻辑总览。
+  · 命令行等价：crypto_logic_registry.py --user-add / --user-remove / --user-restore /
+    --user-list（都带 --json），可用 --store 指定存储文件（自检用独立临时文件，不污染真实数据）。
+
+【环境要求】
+  - Windows 10 / 11  x64
+  - 系统自带 WebView2 运行时（Win11 默认已有；Win10 若缺失，
+    可到微软官网下载 "Microsoft Edge WebView2 Runtime" 安装）
+
+
+
+【本次更新（2026-09-15）】
+  · 新增 GUI 第 7 个页签「MCP 接入」：体检 / 一键装修依赖 / stdio 握手自检 /
+    一键生成并写入客户端配置（详见上文【MCP 接入】与使用手册第九节）。
+  · MCP SDK（mcp 1.30.0）已随包内置，打开页签即显示"就绪"，开箱可用。
+  · 依赖兼容性已处理：h11 固定在 0.14.0、httpcore 固定在 1.0.7，
+    `pip check` 全绿，MCP 与 mitmproxy 两侧可共存。
+  · 窗口默认尺寸调整为 1180×720（最小 1040×640），容纳 7 个页签。
+  · 修复开发用冒烟脚本 _dev_mcp_smoke.py 里写死的旧路径（改为按脚本同目录定位）。
+  · 安全清理：移除包内预置的 API Key 与含真实目标密钥的学习记录（见上文
+    【关于密钥】），并新增发布前密钥泄漏自检工具。
+  · 打包脚本 build-exe.ps1 之前因缺 UTF-8 BOM 在 PowerShell 5.1 下无法解析，
+    现已修复，并新增「发布前安全检查」步骤（发现密钥会直接阻止打包）。
+
+【仅限授权安全测试使用】
+  本工具用于红队护网、APP 渗透与国密密码测评等合法授权场景。
+  未经授权对他人系统进行渗透、破解属于违法行为。
+
+【技术栈】
+  Tauri v2 + Rust + Vue3 + Element Plus + Python 3.11.9（内置，无需另装）
+  密码引擎：pycryptodome 3.23 + gmssl（SM4 分组原语），密码引擎 v2
+================================================================

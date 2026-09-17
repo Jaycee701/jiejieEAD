@@ -1,0 +1,10 @@
+{
+  "_comment": "jiejieEAD 在线 LLM 配置模板。本发布版不含任何密钥（api_key 为空、enabled=false）。请打开 GUI「AI 智能分析」页签，填入你自己的 Base URL / API Key / 模型后点「保存配置」，再打开「启用在线」；不填则全程走离线启发式规则（零网络、零依赖）。此文件保存后由程序自动覆写，_comment 字段会被丢弃。",
+  "base_url": "",
+  "api_key": "",
+  "model": "gpt-4o-mini",
+  "timeout": 120,
+  "connect_timeout": 15,
+  "max_retries": 2,
+  "enabled": false
+}
