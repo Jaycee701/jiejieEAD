@@ -1,17 +1,18 @@
 # jiejieEAD · 加解密分析工作台
 
-**国密 & 对称密码渗透工具集** ｜ **17 种算法 × 6 种工作模式 × 5 种填充** ｜ MITM 自动加解密 ｜ SM2 / SM3 / TLCP 国密分析 ｜ 密文一键解密
+**国密 & 对称密码渗透工具集** ｜ **17 种算法 × 6 种工作模式 × 5 种填充** ｜ **MITM 自动加解密** ｜ **SM2 / SM3 / TLCP 国密分析** ｜ **密文一键解密**
 
-> 当前版本 **v2.0.0**（密码引擎 v4）｜ **11 个 GUI 页签** ｜ 内置 Python 3.11.9，目标机**零环境依赖**
+> 当前版本 **v2.0.0**（密码引擎 v4）｜ **11 个 GUI 页签** ｜ 内置 Python 3.11.9 ｜ 目标机**零环境依赖**，下载解压双击即用
 
-[![Python](https://img.shields.io/badge/Python-3.11.9-blue)]()
-[![Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB)]()
-[![Vue](https://img.shields.io/badge/Vue-3.5-42B883)]()
-[![Algorithms](https://img.shields.io/badge/Algorithms-17-success)]()
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)]()
+[![Version](https://img.shields.io/badge/version-2.0.0-brightgreen)](#十版本历史)
+[![Python](https://img.shields.io/badge/Python-3.11.9-blue)](https://www.python.org/)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB)](https://tauri.app/)
+[![Vue](https://img.shields.io/badge/Vue-3.5-42B883)](https://vuejs.org/)
+[![Algorithms](https://img.shields.io/badge/Algorithms-17-success)](#51-算法17-种)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](#22-系统要求)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-> ⚠️ **免责声明（务必阅读）**
+> ### ⚠️ 免责声明（务必阅读）
 > 本工具**仅限用于已获书面授权的安全测试、安全研究与密码应用合规审计**。
 > 未授权对系统进行渗透、破解属于违法行为，使用者需自行承担全部法律责任。
 > 本工具全流程**本地离线运算**，不会上传任何密钥、明文或密文。
@@ -29,6 +30,7 @@
 - [七、文档导航](#七文档导航)
 - [八、常见问题](#八常见问题)
 - [九、安全与合规](#九安全与合规)
+- [十、版本历史](#十版本历史)
 
 ---
 
@@ -45,45 +47,129 @@ jiejieEAD 是面向 **红队护网、APP 渗透、国密密码测评（密评）
 | **国密合规核查工具链太重** —— 要开 Wireshark + openssl + 自写脚本 | 一条命令完成 SM3 摘要、SM2 公钥 **9 维风险审计**、TLCP 国密流量解析 |
 | **错误密钥导致假阳性** —— 部分国密库去填充不校验，密钥错也静默返回乱码 | 严格 PKCS#7 校验，**错误密钥必定报错**；无完整性校验的组合界面会主动提醒人工核对 |
 
+### 1.1 适合谁用
+
+- **渗透测试 / 红队**：APP 与 Web 接口 Body 加解密分析、Burp 联动改包
+- **密评 / 密码合规审计**：SM2 公钥风险审计、SM3 摘要、TLCP 流量结构核查
+- **安全开发 / 逆向**：拿到密文或加密代码片段，快速判定算法与密钥派生链
+- **CTF / 密码学学习**：17 种算法全矩阵手动试算，逐步留痕
+
+### 1.2 不适合什么
+
+本工具**不内置**任何爆破、免杀、持久化、横向移动、漏洞利用功能，也**不做**流量重放攻击。
+它只回答一个问题：**「这段密文是用什么加出来的，我该怎么复现它」**。
+
 ---
 
 ## 二、快速开始
 
-### 2.1 下载即用（推荐）
+### 2.1 获取程序
 
-1. 点右上角 **Code → Download ZIP**（或 `git clone`）下载**整个仓库**；
-2. 解压到任意目录；
-3. 双击 **`jiejieEAD.exe`** —— 首次启动会检查内置 Python 环境，约 1~3 秒，状态栏显示「依赖检查通过」即可用。
+| 方式 | 命令 / 操作 | 适用 |
+|---|---|---|
+| **下载 ZIP**（推荐） | 右上角 **Code → Download ZIP** | 只要能用就行，不想装 Git |
+| **浅克隆**（体积最小） | `git clone --depth 1 https://github.com/Jaycee701/jiejieEAD.git` | 想留更新通道又不想拉全部历史 |
+| **完整克隆** | `git clone https://github.com/Jaycee701/jiejieEAD.git` | 需要历史记录 |
+
+> **仓库约 125 MB / 4,400+ 个文件**，其中约 119 MB 是内置 Python 运行时（`resources/python-embed/`），
+> 克隆或下载会比较慢，属正常现象。**只想要命令行引擎**的话，见 [2.5 我需要纯 CLI](#25-我需要纯-cli无-gui)。
+
+### 2.2 系统要求
+
+- **Windows 10 1809+ / Windows 11**（本仓库是 Windows 免安装发行版）
+- **WebView2 运行时** —— Win11 已内置；Win10 若提示缺失，装一下微软官方的 Evergreen Runtime 即可
+- **不需要**安装 Python，**不需要** `pip install` 任何依赖
+
+### 2.3 运行
+
+1. 解压到任意目录（路径**不要**含特殊字符）；
+2. 双击 **`jiejieEAD.exe`**；
+3. 首次启动会检查内置 Python 环境，约 **1~3 秒**，底部状态栏显示「依赖检查通过」即可开始用。
 
 > ### ⚠️ 不要只单独拷贝 exe
 > `resources/` 文件夹是程序的「内脏」（内置 Python 3.11.9 + 密码库 + mitmproxy + MCP SDK + 业务脚本）。
 > 要移动到其它位置或 U 盘，必须把 **`jiejieEAD.exe` 和 `resources/` 整个文件夹一起拷走并保持同级**，
 > 否则程序会提示找不到 Python。
 
-**系统要求**：Windows 10 1809+ / Windows 11，需 WebView2（Win11 已内置）。
-**不需要**安装 Python、不需要 `pip install` 任何依赖。
+### 2.4 验证安装（30 秒）
 
-### 2.2 不确定从哪开始？
+不想点界面的话，直接用内置解释器跑一次自检，**全部 PASS 即环境完好**：
 
-先走 **Tab 4「文件扫描分析」**：丢一个文件进去，扫描完会给出「一键填入工作台 / 一键填入 MITM」按钮，
-自动跳到正确页签并把算法、模式、填充、密钥、IV 全部填好。
+```bat
+cd resources\python
+..\python-embed\python.exe cli_crypto.py --selftest
+```
+
+实测结尾输出：
+
+```
+ [9/9] 经典算法公开标准向量（RC5 / RC6 / Blowfish / CAST5 / RC2 / ChaCha20 / Salsa20）
+       [ OK ] RC5-32/12/16 与 RFC 2040 测试向量逐字节一致
+       [ OK ] RC6-32/20/16 与 BouncyCastle 测试向量 3/3 一致（加密+解密往返）
+       ...
+--------------------------------------------------------------------
+[PASS] 密码引擎自检全部通过。
+```
+
+### 2.5 三条上手路径
+
+不确定从哪开始？按你的目的选一条：
+
+| 我想… | 从哪进 | 三步走 |
+|---|---|---|
+| **改全密 Body 接口** | Tab 2「MITM 自动加解密」 | 填白名单域名 → 启动代理 → 在 mitmweb 里改明文，回注自动加密 |
+| **搞清一段密文是什么算法** | Tab 4「文件扫描分析」 | 丢文件/代码进去扫描 → 看识别结果 → 点「一键填入工作台」复现 |
+| **只想要一条命令** | CLI | 见 [第六节](#六命令行用法cli)，`--selftest` → `--spec --json` → 干活 |
+
+> 新手最省事的入口是 **Tab 4**：它会自动帮你把算法、模式、填充、密钥、IV 全部填好并跳到正确页签。
+
+### 2.6 我需要纯 CLI（无 GUI）
+
+密码引擎（`resources/python/`）是**零 GUI 依赖**的纯 Python 模块，可脱离 exe 跑在跳板机 / Linux 服务器上：
+
+```bash
+# 只取引擎源码（不需要下载 119 MB 运行时）
+git clone --depth 1 --filter=blob:none --sparse https://github.com/Jaycee701/jiejieEAD.git
+cd jiejieEAD && git sparse-checkout set resources/python
+
+pip install -r resources/python/requirements.txt
+python resources/python/cli_crypto.py --selftest
+```
 
 ---
 
 ## 三、仓库内容
 
+```
+jiejieEAD/
+├─ jiejieEAD.exe                     ← 桌面主程序（Tauri v2 + Vue3 + Element Plus，约 4.85 MB）
+├─ resources/
+│  ├─ python-embed/                  ← 内置 Python 3.11.9 运行时（约 119 MB，含全部密码依赖）
+│  ├─ python/                        ← 密码引擎与业务脚本（15 个文件，纯 Python，可独立运行）
+│  └─ tools/                         ← 密文样本生成与校验脚本
+├─ 使用手册.md                        ← 完整使用手册（17 节，全部命令与输出均为实机跑通）
+├─ 使用说明.txt                       ← 纯文本速查版（打印 / 离线查阅）
+├─ jiejieEAD-加解密逻辑总览.md         ← 加解密与编码链路的设计说明
+├─ LICENSE                           ← MIT License
+└─ .gitignore                        ← 已排除密钥 / 证书 / 抓包文件 / 学习库
+```
+
 | 路径 | 说明 |
 |---|---|
-| `jiejieEAD.exe` | 桌面主程序（Tauri v2 + Vue3 + Element Plus，约 5 MB） |
-| `resources/python-embed/` | 内置 Python 3.11.9 运行时（含全部密码依赖，约 118 MB） |
+| `jiejieEAD.exe` | 桌面主程序（Tauri v2 + Vue3 + Element Plus，约 4.85 MB） |
+| `resources/python-embed/` | 内置 Python 3.11.9 运行时（含全部密码依赖，约 119 MB） |
 | `resources/python/` | 密码引擎与业务脚本（`crypto_core` / `cli_crypto` / `cipher_auto_solver` / `gm_crypto_analyzer` / `key_material_analyzer` / `file_crypto_scanner` / `folder_crypto_analyzer` / `mitm_crypto` / `ai_crypto_analyzer` / `crypto_mcp_server` 等） |
-| `resources/tools/` | 密文样本生成与校验脚本 |
+| `resources/tools/` | 密文样本生成与校验脚本（`make_cipher_samples.py` / `verify_cipher_samples.py`） |
 | `使用手册.md` | **完整使用手册**（17 节，全部命令与输出均为实机跑通结果） |
 | `使用说明.txt` | 纯文本速查版（打印/离线查阅用） |
 | `jiejieEAD-加解密逻辑总览.md` | 加解密与编码链路的设计说明 |
 | `LICENSE` | MIT License |
 
-整体约 **125 MB / 4800+ 个文件**，全部离线运行，无任何网络请求。
+整体约 **125 MB / 4,400+ 个文件**，全部离线运行，无任何网络请求。
+
+> ### ℹ️ 关于本仓库的性质
+> 本仓库是 **免安装发行版（release）仓库**，不是源码工程 —— 因此**没有** `package.json`、`Cargo.toml`、`src/` 目录树，也不需要你 `npm install` / `cargo build`。
+> 里面的 `resources/python/*.py` 是可读、可直接跑、可二次开发的**未混淆源码**；GUI 前端（Vue3 部分）以编译产物形式包含在 exe 内。
 
 ---
 
@@ -188,6 +274,8 @@ REM ⑤ 密钥格式体检 + 派生（种子 → 加密 → 摘要 → 取中间
 与 pycryptodome 原生实现的字节级对照、HMAC-SM3 与 BouncyCastle 对照、
 公开标准向量（RC5 / RC6 / Blowfish / CAST5 / RC2 / ChaCha20 / Salsa20）、混合信封端到端。
 
+> 完整参数列表见 [`使用手册.md` 第十四节「命令速查」](使用手册.md)，含每个模块的实测输入输出。
+
 ---
 
 ## 七、文档导航
@@ -242,10 +330,47 @@ mitmproxy 11+ 为 Web 界面加了 token 保护，必须带 `?token=...` 才能�
 </details>
 
 <details>
-<summary><b>Q5：支持 macOS / Linux 吗？</b></summary>
+<summary><b>Q5：首次运行被 Windows SmartScreen / 杀软拦了？</b></summary>
 
-CLI 部分**完全支持**（Python 引擎无平台依赖，装好 `requirements.txt` 即可）。
-本仓库提供的是 **Windows 免安装发行版**（含 Windows 版内嵌运行时）。
+`jiejieEAD.exe` **未做代码签名**（个人工具，无 EV 证书），因此 Windows 可能弹出
+「Windows 已保护你的电脑」蓝色提示 —— 点「更多信息 → 仍要运行」即可。
+
+部分杀软对 `mitmproxy` 相关组件会误报，属**代理抓包工具的通用误报**。
+介意的话可以把整个目录加进白名单，或在虚拟机上跑。
+</details>
+
+<details>
+<summary><b>Q6：支持 macOS / Linux 吗？</b></summary>
+
+**CLI 部分完全支持** —— `resources/python/` 是纯 Python，无平台依赖，
+装好 `requirements.txt` 后在 macOS / Linux 上可直接运行（见 [2.6](#26-我需要纯-cli无-gui)）。
+
+**GUI 部分不支持**：本仓库提供的是 Windows 免安装发行版（含 Windows 版内嵌运行时与 exe）。
+</details>
+
+<details>
+<summary><b>Q7：AI 智能分析会联网吗？会不会泄露我的密文？</b></summary>
+
+**默认不联网**。AI 页签默认走**离线启发式规则**（纯本地正则 + 特征码匹配），零网络请求。
+
+只有你手动打开「启用在线」并自行填入 Base URL / API Key 后，才会把**你主动粘贴的那段文本**
+发送给你自己配置的模型服务。发布版**不含任何 LLM 密钥**。
+</details>
+
+<details>
+<summary><b>Q8：MCP 接入怎么配？</b></summary>
+
+见 [`使用手册.md` 第九节「MCP 接入」](使用手册.md)。核心是用 `mcp_setup.py` 生成客户端配置片段，
+指向 `crypto_mcp_server.py`，然后把片段贴进 WorkBuddy / Claude Desktop 的 MCP 配置里。
+接入后 AI 客户端就能调用本工具的加解密与文件扫描能力。
+</details>
+
+<details>
+<summary><b>Q9：仓库里的源码能二次开发吗？</b></summary>
+
+可以。`resources/python/*.py` **未混淆、可直接读**，MIT 协议允许修改与再分发（保留版权声明即可）。
+但**不要**在交付目录里直接改完就重新打包 —— 组目录脚本会镜像覆盖 `resources/`，改动会丢。
+建议 fork 或复制一份源码工程再改。
 </details>
 
 ---
@@ -255,10 +380,21 @@ CLI 部分**完全支持**（Python 引擎无平台依赖，装好 `requirements
 - **全流程离线**：代码中零网络请求，密钥 / 明文 / 密文不出本机；发布版不含任何 LLM 密钥，不配置在线模型即全程离线运行。
 - **不手写底层算法**：全部调用成熟密码库（pycryptodome / gmssl 等），规避 S 盒、轮函数、密钥扩展等实现漏洞；自实现的 RC5/RC6 已用公开标准向量逐字节验证。
 - **抗命令注入 / 路径穿越**：桥接层使用参数数组传参、脚本名白名单校验；外部跳转仅允许本机地址。
+- **敏感文件不入库**：`.gitignore` 已排除 `*.key` / `*.pem` / `*.p12` / `*.pcap` / 学习库 `crypto_knowledge.json` 等，
+  避免实战中接触的真实密钥与抓包文件被误传到公开仓库。
 - **合规使用**：所有源码头部含免责声明，GUI 顶部常驻不可关闭的法律声明横幅；
   工具**不内置任何爆破、免杀、持久化、横向移动功能**。
 - **授权要求**：仅限**已获书面授权**的安全测试与密码合规审计使用。在中华人民共和国境内开展测试，
   应遵守《网络安全法》《数据安全法》《个人信息保护法》及《商用密码管理条例》等相关法律法规。
+
+---
+
+## 十、版本历史
+
+| 版本 | 主要变化 |
+|---|---|
+| **v2.0.0**（当前） | 密码引擎 **v4**：算法从 SM4-CBC / AES-256-CBC 扩展为 **17 算法 × 6 模式 × 5 填充**全矩阵；新增「文件夹整体分析」（跨文件关系图 + 数据流链路）、「加密逻辑总览」、「一键解密」；GUI 扩展至 11 个页签；文件扫描器识别到的组合**全部可在工作台 / MITM 复现** |
+| v1.x | 初版：SM4-CBC / AES-256-CBC 加解密、MITM 自动加解密、国密分析基础能力 |
 
 ---
 
@@ -270,4 +406,4 @@ MIT License — 详见 [LICENSE](LICENSE)
 
 ---
 
-<sub>Bug / 缺陷 / 建议反馈：jiejieddd@qq.com</sub>
+<sub>Bug / 缺陷 / 建议反馈：jiejieddd@qq.com ｜ From JieJie</sub>
